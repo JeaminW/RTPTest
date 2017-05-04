@@ -30,7 +30,6 @@
 
 package com.caih.caas.rtp.benchmark;
 
-import java.awt.*;
 import java.net.*;
 import java.util.Arrays;
 import java.util.Vector;
@@ -331,72 +330,6 @@ public class AVReceive2 implements ReceiveStreamListener, SessionListener,
         }
 
     }
-
-
-    /**
-     * GUI classes for the Player.
-     */
-    class PlayerWindow extends Frame {
-
-        Player player;
-        ReceiveStream stream;
-
-        PlayerWindow(Player p, ReceiveStream strm) {
-            player = p;
-            stream = strm;
-        }
-
-        public void initialize() {
-            add(new PlayerPanel(player));
-        }
-
-        public void close() {
-            player.close();
-            setVisible(false);
-            dispose();
-        }
-
-        public void addNotify() {
-            super.addNotify();
-            pack();
-        }
-    }
-
-
-    /**
-     * GUI classes for the Player.
-     */
-    class PlayerPanel extends Panel {
-
-        Component vc, cc;
-
-        PlayerPanel(Player p) {
-            setLayout(new BorderLayout());
-            if ((vc = p.getVisualComponent()) != null)
-                add("Center", vc);
-            if ((cc = p.getControlPanelComponent()) != null)
-                add("South", cc);
-        }
-
-        public Dimension getPreferredSize() {
-            int w = 0, h = 0;
-            if (vc != null) {
-                Dimension size = vc.getPreferredSize();
-                w = size.width;
-                h = size.height;
-            }
-            if (cc != null) {
-                Dimension size = cc.getPreferredSize();
-                if (w == 0)
-                    w = size.width;
-                h += size.height;
-            }
-            if (w < 160)
-                w = 160;
-            return new Dimension(w, h);
-        }
-    }
-
 
     public static void main(String argv[]) {
         if (argv.length < 2)
