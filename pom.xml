@@ -18,6 +18,7 @@
     <modules>
         <module>AVTransmit</module>
         <module>AVReceive</module>
+        <module>common</module>
     </modules>
 
     <dependencies>

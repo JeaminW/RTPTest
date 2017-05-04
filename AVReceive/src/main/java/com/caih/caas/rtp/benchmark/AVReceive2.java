@@ -90,26 +90,26 @@ public class AVReceive2 implements ReceiveStreamListener, SessionListener,
                     return false;
                 }
 
-                System.err.println("  - Open RTP session for: addr: " + session.addr + " port: " + session.port + " ttl: " + session.ttl);
+                System.err.println("  - Open RTP session for: addr: " + session.getIpAddr() + " port: " + session.getPort() + " ttl: " + session.getTtl());
 
                 mgrs[i] = (RTPManager) RTPManager.newInstance();
                 mgrs[i].addSessionListener(this);
                 mgrs[i].addReceiveStreamListener(this);
 
-                ipAddr = InetAddress.getByName(session.addr);
+                ipAddr = InetAddress.getByName(session.getIpAddr());
 
                 if (ipAddr.isMulticastAddress()) {
                     // local and remote address pairs are identical:
                     localAddr = new SessionAddress(ipAddr,
-                            session.port,
-                            session.ttl);
+                            session.getPort(),
+                            session.getTtl());
                     destAddr = new SessionAddress(ipAddr,
-                            session.port,
-                            session.ttl);
+                            session.getPort(),
+                            session.getTtl());
                 } else {
                     localAddr = new SessionAddress(InetAddress.getByName(bindIpAddr),
-                            session.port);
-                    destAddr = new SessionAddress(ipAddr, session.port);
+                            session.getPort());
+                    destAddr = new SessionAddress(ipAddr, session.getPort());
                 }
                 System.err.println("Session local addr: " + localAddr);
                 System.err.println("Session remote addr: " + destAddr);
@@ -330,79 +330,6 @@ public class AVReceive2 implements ReceiveStreamListener, SessionListener,
             System.err.println("com.caih.caas.rtp.benchmark.AVReceive2 internal error: " + ce);
         }
 
-    }
-
-
-    /**
-     * A utility class to parse the session addresses.
-     */
-    class SessionLabel {
-
-        public String addr = null;
-        public int port;
-        public int ttl = 1;
-
-        SessionLabel(String session) throws IllegalArgumentException {
-
-            int off;
-            String portStr = null, ttlStr = null;
-
-            if (session != null && session.length() > 0) {
-                while (session.length() > 1 && session.charAt(0) == '/')
-                    session = session.substring(1);
-
-                // Now see if there's a addr specified.
-                off = session.indexOf('/');
-                if (off == -1) {
-                    if (!session.equals(""))
-                        addr = session;
-                } else {
-                    addr = session.substring(0, off);
-                    session = session.substring(off + 1);
-                    // Now see if there's a port specified
-                    off = session.indexOf('/');
-                    if (off == -1) {
-                        if (!session.equals(""))
-                            portStr = session;
-                    } else {
-                        portStr = session.substring(0, off);
-                        session = session.substring(off + 1);
-                        // Now see if there's a ttl specified
-                        off = session.indexOf('/');
-                        if (off == -1) {
-                            if (!session.equals(""))
-                                ttlStr = session;
-                        } else {
-                            ttlStr = session.substring(0, off);
-                        }
-                    }
-                }
-            }
-
-            if (addr == null)
-                throw new IllegalArgumentException();
-
-            if (portStr != null) {
-                try {
-                    Integer integer = Integer.valueOf(portStr);
-                    if (integer != null)
-                        port = integer.intValue();
-                } catch (Throwable t) {
-                    throw new IllegalArgumentException();
-                }
-            } else
-                throw new IllegalArgumentException();
-
-            if (ttlStr != null) {
-                try {
-                    Integer integer = Integer.valueOf(ttlStr);
-                    if (integer != null)
-                        ttl = integer.intValue();
-                } catch (Throwable t) {
-                    throw new IllegalArgumentException();
-                }
-            }
-        }
     }
 
 
