@@ -348,7 +348,7 @@ public class AVReceive2 implements ReceiveStreamListener, SessionListener,
         } catch (Exception e) {
         }
 
-        System.err.println("Exiting com.caih.caas.rtp.benchmark.AVReceive2");
+        System.err.println("Exiting AVReceive2");
     }
 
 
