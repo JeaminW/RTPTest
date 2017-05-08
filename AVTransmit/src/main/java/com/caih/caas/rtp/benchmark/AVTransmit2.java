@@ -34,6 +34,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.InetAddress;
 import javax.media.*;
+import javax.media.control.BufferControl;
 import javax.media.protocol.*;
 import javax.media.protocol.DataSource;
 import javax.media.format.*;
@@ -43,7 +44,9 @@ import javax.media.rtp.*;
 import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.*;
 
+import com.sun.corba.se.impl.presentation.rmi.StubInvocationHandlerImpl;
 import com.sun.media.rtp.*;
+import com.sun.org.apache.xpath.internal.axes.SelfIteratorNoPredicate;
 
 public class AVTransmit2 implements ReceiveStreamListener {
 
@@ -56,6 +59,7 @@ public class AVTransmit2 implements ReceiveStreamListener {
     private Processor processor = null;
     private RTPManager rtpMgrs[];
     private DataSource dataOutput = null;
+    private PlayerWindow playerWindow;
 
     public AVTransmit2(MediaLocator locator,
                        SessionLabel bindSession,
@@ -103,6 +107,9 @@ public class AVTransmit2 implements ReceiveStreamListener {
                 processor.stop();
                 processor.close();
                 processor = null;
+
+                setPlayerWindow(null);
+
                 for (int i = 0; i < rtpMgrs.length; i++) {
                     rtpMgrs[i].removeTargets("Session ended.");
                     rtpMgrs[i].dispose();
@@ -241,6 +248,14 @@ public class AVTransmit2 implements ReceiveStreamListener {
                 destAddr = new SessionAddress(InetAddress.getByName(destSession.getIpAddr()), destPort);
 
                 rtpMgrs[i].initialize(localAddr);
+                BufferControl buffCtrl = (BufferControl) rtpMgrs[i].getControl("javax.media.control.BufferControl");
+                if (buffCtrl != null) {
+                    buffCtrl.setBufferLength(350);
+                    buffCtrl.setEnabledThreshold(true);
+                    buffCtrl.setMinimumThreshold(20);
+                    System.err.println("Setup Buffer Control: buffLen[350] minThreshold[20] in ms unit.");
+                }
+
                 rtpMgrs[i].addTarget(destAddr);
 
                 System.err.println("Created RTP session: " + destSession.getIpAddr() + "/" + destPort);
@@ -413,7 +428,11 @@ public class AVTransmit2 implements ReceiveStreamListener {
                     System.err.println("      The stream comes from: " + participant.getCNAME());
                 }
 
-                ds.start();
+                // create a player by passing datasource to the Media Manager
+                Player p = createMediaPlayer(ds);
+                p.realize();
+                PlayerWindow pw = new PlayerWindow(p, stream);
+                setPlayerWindow(pw);
             } catch (Exception e) {
                 System.err.println("NewReceiveStreamEvent exception " + e.getMessage());
                 return;
@@ -432,9 +451,68 @@ public class AVTransmit2 implements ReceiveStreamListener {
         } else if (receiveStreamEvent instanceof ByeEvent) {
             System.err.println("  - Got \"bye\" from: " + participant.getCNAME());
 
+            if (playerWindow != null && playerWindow.stream == stream) {
+                setPlayerWindow(null);
+            }
+
             RTPManager mngr = (RTPManager)receiveStreamEvent.getSource();
             mngr.removeTargets("Closing session from AVTransmit2");
             mngr.dispose();
+        }
+    }
+
+    private Player createMediaPlayer(DataSource ds) throws IOException, NoPlayerException {
+        Player p = javax.media.Manager.createPlayer(ds);
+        if (p == null) {
+            return null;
+        }
+
+        p.addControllerListener(new ControllerAdapter() {
+            PlayerWindow find(Player player) {
+                if (playerWindow != null && playerWindow.player == player) {
+                    return playerWindow;
+                } else {
+                    return null;
+                }
+            }
+
+            @Override
+            public void realizeComplete(RealizeCompleteEvent e) {
+                Player player = (Player) e.getSourceController();
+                PlayerWindow pw = find(player);
+                if (pw == null) {
+                    // Some strange happened.
+                    System.err.println("Internal error!");
+                    System.exit(-1);
+                }
+
+                pw.initialize();
+                pw.setVisible(true);
+                player.start();
+            }
+
+            @Override
+            public void controllerError(ControllerErrorEvent e) {
+                Player player = (Player) e.getSourceController();
+                player.removeControllerListener(this);
+                PlayerWindow pw = find(player);
+                if (pw != null) {
+                    setPlayerWindow(null);
+                }
+                System.err.println("AVReceive2 internal error: " + e);
+            }
+        });
+        return p;
+    }
+
+    protected void setPlayerWindow(PlayerWindow playerWindow) {
+        if (this.playerWindow != playerWindow) {
+            if (this.playerWindow != null) {
+                this.playerWindow.close();
+                this.playerWindow = null;
+            }
+
+            this.playerWindow = playerWindow;
         }
     }
 
