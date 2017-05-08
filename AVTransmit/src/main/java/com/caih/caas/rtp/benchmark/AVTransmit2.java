@@ -40,35 +40,30 @@ import javax.media.format.*;
 import javax.media.control.TrackControl;
 import javax.media.control.QualityControl;
 import javax.media.rtp.*;
+import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.*;
 
 import com.sun.media.rtp.*;
 
-public class AVTransmit2 {
+public class AVTransmit2 implements ReceiveStreamListener {
 
     // Input MediaLocator
     // Can be a file or http or capture source
     private MediaLocator locator;
-    private String bindIpAddr;
-    private String ipAddress;
-    private int portBase;
+    private SessionLabel bindSession;
+    private SessionLabel destSession;
 
     private Processor processor = null;
     private RTPManager rtpMgrs[];
     private DataSource dataOutput = null;
 
     public AVTransmit2(MediaLocator locator,
-                       String bindIpAddr,
-                       String ipAddress,
-                       String pb,
-                       Format format) {
+                       SessionLabel bindSession,
+                       SessionLabel destSession) {
 
         this.locator = locator;
-        this.bindIpAddr = bindIpAddr;
-        this.ipAddress = ipAddress;
-        Integer integer = Integer.valueOf(pb);
-        if (integer != null)
-            this.portBase = integer.intValue();
+        this.bindSession = bindSession;
+        this.destSession = destSession;
     }
 
     /**
@@ -221,14 +216,15 @@ public class AVTransmit2 {
 
         rtpMgrs = new RTPManager[pbss.length];
         SessionAddress localAddr, destAddr;
-        InetAddress ipAddr;
         SendStream sendStream;
-        int port;
+        int localPort;
+        int destPort;
         SourceDescription srcDesList[];
 
         for (int i = 0; i < pbss.length; i++) {
             try {
                 rtpMgrs[i] = RTPManager.newInstance();
+                rtpMgrs[i].addReceiveStreamListener(this);
 
                 // The local session address will be created on the
                 // same port as the the target port. This is necessary
@@ -238,19 +234,16 @@ public class AVTransmit2 {
                 // on and sends RTCP Receiver Reports back to this port of
                 // the transmitting host.
 
-                port = portBase + 2 * i;
-                ipAddr = InetAddress.getByName(ipAddress);
+                localPort = bindSession.getPort() + 2 * i;
+                destPort = destSession.getPort() + 2 * i;
 
-                localAddr = new SessionAddress(InetAddress.getByName(bindIpAddr),
-                        port);
-
-                destAddr = new SessionAddress(ipAddr, port);
+                localAddr = new SessionAddress(InetAddress.getByName(bindSession.getIpAddr()), localPort);
+                destAddr = new SessionAddress(InetAddress.getByName(destSession.getIpAddr()), destPort);
 
                 rtpMgrs[i].initialize(localAddr);
-
                 rtpMgrs[i].addTarget(destAddr);
 
-                System.err.println("Created RTP session: " + ipAddress + " " + port);
+                System.err.println("Created RTP session: " + destSession.getIpAddr() + "/" + destPort);
                 System.err.println("Session local addr: " + localAddr);
                 System.err.println("Session remote addr: " + destAddr);
 
@@ -393,6 +386,58 @@ public class AVTransmit2 {
             return true;
     }
 
+    @Override
+    public void update(ReceiveStreamEvent receiveStreamEvent) {
+        Participant participant = receiveStreamEvent.getParticipant();    // could be null.
+        ReceiveStream stream = receiveStreamEvent.getReceiveStream();  // could be null.
+
+        if (receiveStreamEvent instanceof RemotePayloadChangeEvent) {
+            System.err.println("  - Received an RTP PayloadChangeEvent.");
+            System.err.println("Sorry, cannot handle payload change.");
+            System.exit(0);
+        } else if (receiveStreamEvent instanceof NewReceiveStreamEvent) {
+            try {
+                DataSource ds = stream.getDataSource();
+
+                // Find out the formats.
+                RTPControl ctl = (RTPControl) ds.getControl("javax.media.rtp.RTPControl");
+                if (ctl != null) {
+                    System.err.println("  - Recevied new RTP stream: " + ctl.getFormat());
+                } else {
+                    System.err.println("  - Recevied new RTP stream");
+                }
+
+                if (participant == null)
+                    System.err.println("      The sender of this stream had yet to be identified.");
+                else {
+                    System.err.println("      The stream comes from: " + participant.getCNAME());
+                }
+
+                ds.start();
+            } catch (Exception e) {
+                System.err.println("NewReceiveStreamEvent exception " + e.getMessage());
+                return;
+            }
+        } else if (receiveStreamEvent instanceof StreamMappedEvent) {
+            if (stream != null && stream.getDataSource() != null) {
+                DataSource ds = stream.getDataSource();
+                // Find out the formats.
+                RTPControl ctl = (RTPControl) ds.getControl("javax.media.rtp.RTPControl");
+                System.err.println("  - The previously unidentified stream ");
+                if (ctl != null) {
+                    System.err.println("      " + ctl.getFormat());
+                }
+                System.err.println("      had now been identified as sent by: " + participant.getCNAME());
+            }
+        } else if (receiveStreamEvent instanceof ByeEvent) {
+            System.err.println("  - Got \"bye\" from: " + participant.getCNAME());
+
+            RTPManager mngr = (RTPManager)receiveStreamEvent.getSource();
+            mngr.removeTargets("Closing session from AVTransmit2");
+            mngr.dispose();
+        }
+    }
+
     /****************************************************************
      * Inner Classes
      ****************************************************************/
@@ -414,69 +459,6 @@ public class AVTransmit2 {
                 }
             }
         }
-    }
-
-
-    /****************************************************************
-     * Sample Usage for com.caih.caas.rtp.benchmark.AVTransmit2 class
-     ****************************************************************/
-
-    public static void main(String[] args) {
-        // We need three parameters to do the transmission
-        // For example,
-        //   java AVTransmit2 file:/C:/media/test.mov 127.0.0.1 129.130.131.132 42050
-
-        if (args.length < 4) {
-            prUsage();
-        }
-
-        Format fmt = null;
-        int i = 0;
-
-        // Create a audio transmit object with the specified params.
-        AVTransmit2 at = new AVTransmit2(new MediaLocator(args[i]),
-                args[i + 1], args[i + 2], args[i + 3], fmt);
-        // Start the transmission
-        String result = at.start();
-
-        // result will be non-null if there was an error. The return
-        // value is a String describing the possible error. Print it.
-        if (result != null) {
-            System.err.println("Error : " + result);
-            System.exit(0);
-        }
-
-        System.err.println("Start transmission for 60 seconds...");
-
-        // Transmit for 60 seconds and then close the processor
-        // This is a safeguard when using a capture data source
-        // so that the capture device will be properly released
-        // before quitting.
-        // The right thing to do would be to have a GUI with a
-        // "Stop" button that would call stop on com.caih.caas.rtp.benchmark.AVTransmit2
-        try {
-            Thread.currentThread().sleep(60000);
-        } catch (InterruptedException ie) {
-        }
-
-        // Stop the transmission
-        at.stop();
-
-        System.err.println("...transmission ended.");
-
-        System.exit(0);
-    }
-
-
-    static void prUsage() {
-        System.err.println("Usage: AVTransmit2 <sourceURL> <bindIP> <destIP> <destPortBase>");
-        System.err.println("     <sourceURL>: input URL or file name");
-        System.err.println("     <bindIP>: bind local IP address");
-        System.err.println("     <destIP>: multicast, broadcast or unicast IP address for the transmission");
-        System.err.println("     <destPortBase>: network port numbers for the transmission.");
-        System.err.println("                     The first track will use the destPortBase.");
-        System.err.println("                     The next track will use destPortBase + 2 and so on.\n");
-        System.exit(0);
     }
 }
 

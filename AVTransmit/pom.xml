@@ -35,7 +35,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.caih.caas.rtp.benchmark.AVTransmit2</mainClass>
+                            <mainClass>com.caih.caas.rtp.benchmark.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
