@@ -13,11 +13,13 @@ public class Main {
     private static final String OPT_SHORT_DEST_ADDR = "d";
     private static final String OPT_SHORT_RUN = "r";
     private static final String OPT_SHORT_HELP = "h";
+    private static final String OPT_SHORT_GUI = "g";
 
     private static MediaLocator mediaLocator;
     private static SessionLabel bindSession;
     private static SessionLabel destSession;
     private static int numOfInstances = 1;
+    private static boolean bShowGUI = false;
 
     public static void main(String[] args) {
         Options options = buildOptions();
@@ -69,6 +71,7 @@ public class Main {
 
         options.addOption(OPT_SHORT_RUN, true, "number of running instances");
         options.addOption(OPT_SHORT_HELP, "help", false, "print help for the command.");
+        options.addOption(OPT_SHORT_GUI, "gui", false, "play received audio stream with gui.");
 
         return options;
     }
@@ -93,6 +96,10 @@ public class Main {
             if (cmd.hasOption(OPT_SHORT_HELP)) {
                 printHelp(options);
             }
+
+            if (cmd.hasOption(OPT_SHORT_GUI)) {
+                bShowGUI = true;
+            }
         } catch (ParseException e) {
             System.err.println("Parse command line error.");
             printHelp(options);
@@ -101,8 +108,12 @@ public class Main {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> [-r runs] [-h]", options);
+        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> [-r runs] [-h] [-g/--gui]", options);
 
         System.exit(0);
+    }
+
+    public static boolean isShowGUI() {
+        return bShowGUI;
     }
 }

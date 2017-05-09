@@ -44,10 +44,6 @@ import javax.media.rtp.*;
 import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.*;
 
-import com.sun.corba.se.impl.presentation.rmi.StubInvocationHandlerImpl;
-import com.sun.media.rtp.*;
-import com.sun.org.apache.xpath.internal.axes.SelfIteratorNoPredicate;
-
 public class AVTransmit2 implements ReceiveStreamListener {
 
     // Input MediaLocator
@@ -428,11 +424,15 @@ public class AVTransmit2 implements ReceiveStreamListener {
                     System.err.println("      The stream comes from: " + participant.getCNAME());
                 }
 
-                // create a player by passing datasource to the Media Manager
-                Player p = createMediaPlayer(ds);
-                p.realize();
-                PlayerWindow pw = new PlayerWindow(p, stream);
-                setPlayerWindow(pw);
+                if (Main.isShowGUI()) {
+                    // create a player by passing datasource to the Media Manager
+                    Player p = createMediaPlayer(ds);
+                    p.realize();
+                    PlayerWindow pw = new PlayerWindow(p, stream);
+                    setPlayerWindow(pw);
+                } else {
+                    ds.start();
+                }
             } catch (Exception e) {
                 System.err.println("NewReceiveStreamEvent exception " + e.getMessage());
                 return;
@@ -455,7 +455,7 @@ public class AVTransmit2 implements ReceiveStreamListener {
                 setPlayerWindow(null);
             }
 
-            RTPManager mngr = (RTPManager)receiveStreamEvent.getSource();
+            RTPManager mngr = (RTPManager) receiveStreamEvent.getSource();
             mngr.removeTargets("Closing session from AVTransmit2");
             mngr.dispose();
         }
