@@ -5,8 +5,8 @@ import javax.media.protocol.DataSource;
 import javax.media.rtp.*;
 import javax.media.rtp.event.*;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -17,6 +17,7 @@ public class RTPSwitch implements ReceiveStreamListener {
     String[] sessions;
     List<RTPManager> rtpMngrs;
 
+    Map<RTPManager, ReceiveStream> receivedStreamsMap = new ConcurrentHashMap<>(2);
     final AtomicInteger receivedStreamCount = new AtomicInteger(0);
 
     public RTPSwitch(String bindIpAddr, String[] sessions) {
@@ -152,20 +153,20 @@ public class RTPSwitch implements ReceiveStreamListener {
     }
 
     protected boolean switchReceiveStreams() {
-        return transmitStream(rtpMngrs.get(0), rtpMngrs.get(1)) && transmitStream(rtpMngrs.get(1), rtpMngrs.get(0));
+        Set<Map.Entry<RTPManager, ReceiveStream>> entrySet = receivedStreamsMap.entrySet();
+
+        boolean result = true;
+        for (Map.Entry<RTPManager, ReceiveStream> entry : entrySet) {
+            result = result && transmitStream(entry.getKey(), entry.getValue());
+        }
+
+        receivedStreamsMap.clear();
+        return result;
     }
 
-    protected boolean transmitStream(RTPManager fromMngr, RTPManager toMngr) {
-        if (fromMngr == null || fromMngr.getReceiveStreams().size() <= 0) {
-            return false;
-        }
-
-        if (toMngr == null || toMngr.getSendStreams().size() > 0) {
-            return false;
-        }
-
+    protected boolean transmitStream(RTPManager fromMngr, ReceiveStream recvStream) {
         try {
-            ReceiveStream recvStream = (ReceiveStream) fromMngr.getReceiveStreams().get(0);
+            RTPManager toMngr = findOppositeEnd(fromMngr);
             DataSource dataSource = recvStream.getDataSource();
             SendStream sendStream = toMngr.createSendStream(dataSource, 0);
             sendStream.start();
@@ -175,6 +176,26 @@ public class RTPSwitch implements ReceiveStreamListener {
         }
 
         return true;
+    }
+
+    protected RTPManager findOppositeEnd(RTPManager mngr) {
+        if (mngr == null) {
+            return null;
+        }
+
+        int oppositeIndex = -1;
+        for (int i = 0; i < rtpMngrs.size(); ++i) {
+            if (rtpMngrs.get(i) != mngr) {
+                oppositeIndex = i;
+                break;
+            }
+        }
+
+        if (oppositeIndex == -1) {
+            return null;
+        } else {
+            return rtpMngrs.get(oppositeIndex);
+        }
     }
 
     @Override
@@ -187,6 +208,7 @@ public class RTPSwitch implements ReceiveStreamListener {
             System.err.println("Sorry, cannot handle payload change.");
             System.exit(0);
         } else if (receiveStreamEvent instanceof NewReceiveStreamEvent) {
+            RTPManager mngr = (RTPManager)receiveStreamEvent.getSource();
                 DataSource ds = stream.getDataSource();
 
                 // Find out the formats.
@@ -202,6 +224,8 @@ public class RTPSwitch implements ReceiveStreamListener {
                 else {
                     System.err.println("      The stream comes from: " + participant.getCNAME());
                 }
+
+                receivedStreamsMap.put(mngr, stream);
 
                 // Notify init() that a new stream had arrived.
                 synchronized (receivedStreamCount) {
