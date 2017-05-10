@@ -243,7 +243,9 @@ public class AVTransmit2 implements ReceiveStreamListener {
                 localAddr = new SessionAddress(InetAddress.getByName(bindSession.getIpAddr()), localPort);
                 destAddr = new SessionAddress(InetAddress.getByName(destSession.getIpAddr()), destPort);
 
-                rtpMgrs[i].initialize(localAddr);
+                SourceDescription[] srcDescList = JMFUtils.createSourceDescriptions(localAddr);
+                JMFUtils.initializeRTPManager(rtpMgrs[i], localAddr, srcDescList);
+
                 BufferControl buffCtrl = (BufferControl) rtpMgrs[i].getControl("javax.media.control.BufferControl");
                 if (buffCtrl != null) {
                     buffCtrl.setBufferLength(350);
