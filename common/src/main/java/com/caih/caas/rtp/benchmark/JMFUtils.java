@@ -31,6 +31,7 @@
 
 package com.caih.caas.rtp.benchmark;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.awt.*;
 
@@ -349,7 +350,42 @@ public class JMFUtils {
         return mngrSession;
     }
 
+    public static SourceDescription[] createSourceDescriptions(SessionAddress sessionAddress) {
+        if (sessionAddress == null) {
+            return defaultSourceDescriptions();
+        } else {
+            String cname = sessionAddress.getDataHostAddress() + ":" + sessionAddress.getDataPort();
+            SourceDescription[] sourceDescriptions = new SourceDescription[] {
+                    new SourceDescription(SourceDescription.SOURCE_DESC_EMAIL, cname, 1, false),
+                    new SourceDescription(SourceDescription.SOURCE_DESC_CNAME, cname, 1, false),
+                    new SourceDescription(SourceDescription.SOURCE_DESC_TOOL, "JMF RTP Player v2.0", 1, false)
+            };
 
+            return sourceDescriptions;
+        }
+    }
+
+    public static SourceDescription[] defaultSourceDescriptions() {
+        String cname = SourceDescription.generateCNAME();
+        SourceDescription[] sourceDescriptions = new SourceDescription[] {
+                new SourceDescription(SourceDescription.SOURCE_DESC_EMAIL, "jmf-user@sun.com", 1, false),
+                new SourceDescription(SourceDescription.SOURCE_DESC_CNAME, cname, 1, false),
+                new SourceDescription(SourceDescription.SOURCE_DESC_TOOL, "JMF RTP Player v2.0", 1, false)
+        };
+
+        return sourceDescriptions;
+    }
+
+    public static void initializeRTPManager(RTPManager manager, SessionAddress localAddress, SourceDescription[] sourceDescriptions) throws InvalidSessionAddressException, IOException {
+        if (sourceDescriptions == null) {
+            manager.initialize(localAddress);
+        } else {
+            double rtcp_bw_fraction = 0.05D;
+            double rtcp_sender_bw_fraction = 0.25D;
+            SessionAddress[] localAddresses = new SessionAddress[]{localAddress};
+            manager.initialize(localAddresses, sourceDescriptions, rtcp_bw_fraction, rtcp_sender_bw_fraction, null);
+        }
+    }
 }
 
 
