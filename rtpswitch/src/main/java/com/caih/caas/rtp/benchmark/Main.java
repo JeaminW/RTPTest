@@ -6,19 +6,20 @@ import org.apache.commons.cli.*;
  * Created by jeaminw on 17/5/5.
  */
 public class Main {
-    private static final String OPT_SHORT_BIND_IP_ADDR = "b";
+    private static final String OPT_SHORT_BIND_ADDR = "b";
+    private static final String OPT_SHORT_DEST_ADDR = "d";
     private static final String OPT_SHORT_RUN = "r";
     private static final String OPT_SHORT_HELP = "h";
 
-    private static String bindIPAddr;
-    private static String[] sessions;
+    private static SessionLabel[] bindSessions;
+    private static SessionLabel[] destSessions;
     private static int numOfInstances = 1;
 
     public static void main(String argv[]) {
         Options options = buildOptions();
         parseOptions(options, argv);
 
-        RTPSwitch rtpSwitch = new RTPSwitch(bindIPAddr, sessions);
+        RTPSwitch rtpSwitch = new RTPSwitch(bindSessions, destSessions);
         if (!rtpSwitch.init()) {
             System.err.println("Failed to initialize the sessions.");
             System.exit(-1);
@@ -38,10 +39,16 @@ public class Main {
 
     private static Options buildOptions() {
         Options options = new Options();
-        options.addOption(Option.builder(OPT_SHORT_BIND_IP_ADDR)
+        options.addOption(Option.builder(OPT_SHORT_BIND_ADDR)
                 .required()
-                .hasArg()
-                .desc("binded local IP address")
+                .numberOfArgs(2)
+                .desc("binded local session addr, ip/port/ttl")
+                .build());
+
+        options.addOption(Option.builder(OPT_SHORT_DEST_ADDR)
+                .required()
+                .numberOfArgs(2)
+                .desc("destination session addr, ip/port/ttl")
                 .build());
 
         options.addOption(OPT_SHORT_RUN, true, "number of running instances");
@@ -55,7 +62,21 @@ public class Main {
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, argv);
 
-            Main.bindIPAddr = cmd.getOptionValue(OPT_SHORT_BIND_IP_ADDR);
+            String[] sessions = cmd.getOptionValues(OPT_SHORT_BIND_ADDR);
+            if (sessions.length != 2) {
+                System.err.println("Must specify two binded local sessions.");
+                printHelp(options);
+            } else {
+                bindSessions = new SessionLabel[]{new SessionLabel(sessions[0]), new SessionLabel(sessions[1])};
+            }
+
+            sessions = cmd.getOptionValues(OPT_SHORT_DEST_ADDR);
+            if (sessions.length != 2) {
+                System.err.println("Must specify two destination sessions.");
+                printHelp(options);
+            } else {
+                destSessions = new SessionLabel[]{new SessionLabel(sessions[0]), new SessionLabel(sessions[1])};
+            }
 
             if (cmd.hasOption(OPT_SHORT_RUN)) {
                 String strNumOfInstances = cmd.getOptionValue(OPT_SHORT_RUN);
@@ -68,15 +89,7 @@ public class Main {
             if (cmd.hasOption(OPT_SHORT_HELP)) {
                 printHelp(options);
             }
-
-            String[] sessions = cmd.getArgs();
-            if (sessions.length != 2) {
-                System.err.println("Must specify two destination sessions.");
-                printHelp(options);
-            } else {
-                Main.sessions = sessions;
-            }
-        } catch (ParseException e) {
+        } catch (Exception e) {
             System.err.println("Parse command line error.");
             printHelp(options);
         }
@@ -84,7 +97,7 @@ public class Main {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "RTPSwitch [OPTION] <SESSION-A> <SESSION-B>", "", options, "<SESSION-A/B> : <destIpAddr>/<port>/<ttl>");
+        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-h]", options);
 
         System.exit(0);
     }

@@ -4,6 +4,7 @@ import javax.media.control.BufferControl;
 import javax.media.protocol.DataSource;
 import javax.media.rtp.*;
 import javax.media.rtp.event.*;
+import javax.media.rtp.rtcp.SourceDescription;
 import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,66 +14,58 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by jeaminw on 17/5/5.
  */
 public class RTPSwitch implements ReceiveStreamListener {
-    String bindIpAddr;
-    String[] sessions;
+    SessionLabel[] bindSessions;
+    SessionLabel[] destSessions;
     List<RTPManager> rtpMngrs;
 
     Map<RTPManager, ReceiveStream> receivedStreamsMap = new ConcurrentHashMap<>(2);
     final AtomicInteger receivedStreamCount = new AtomicInteger(0);
 
-    public RTPSwitch(String bindIpAddr, String[] sessions) {
-        this.bindIpAddr = bindIpAddr;
-        this.sessions = sessions;
+    public RTPSwitch(SessionLabel[] bindSessions, SessionLabel[] destSessions) {
+        this.bindSessions = bindSessions;
+        this.destSessions = destSessions;
     }
 
     public boolean init() {
-        if (sessions == null || sessions.length != 2) {
-            throw new IllegalArgumentException("Needs 2 sessions: " + sessions);
+        if (bindSessions == null || bindSessions.length != 2) {
+            throw new IllegalArgumentException("Needs 2 binded sessions: " + bindSessions);
+        }
+
+        if (destSessions == null || destSessions.length != 2) {
+            throw new IllegalArgumentException("Needs 2 dest sessions: " + destSessions);
         }
 
         try {
-            if (bindIpAddr == null || bindIpAddr.length() <= 0) {
-                bindIpAddr = InetAddress.getLocalHost().getHostAddress();
-            }
-
             InetAddress destIpAddr;
             SessionAddress localAddr;
             SessionAddress destAddr;
-            SessionLabel session;
-            rtpMngrs = new ArrayList<>(sessions.length);
+            rtpMngrs = new ArrayList<>(destSessions.length);
 
-            for (int i = 0; i < sessions.length; ++i) {
-                // Parse the session addresses.
-                try {
-                    session = new SessionLabel(sessions[i]);
-                } catch (IllegalArgumentException e) {
-                    System.err.println("Failed to parse the session address given: " + sessions[i]);
-                    return false;
-                }
-
-                System.err.println("  - Open RTP session for addr: " + session.getIpAddr() + " port: " + session.getPort() + " ttl: " + session.getTtl());
+            for (int i = 0; i < destSessions.length; ++i) {
+                System.err.println("  - Open RTP session for addr: " + destSessions[i].getIpAddr() + " port: " + destSessions[i].getPort() + " ttl: " + destSessions[i].getTtl());
 
                 RTPManager rtpMngr = RTPManager.newInstance();
                 rtpMngr.addSessionListener(new RTPManagerSessionListener());
                 rtpMngr.addReceiveStreamListener(this);
 
-                destIpAddr = InetAddress.getByName(session.getIpAddr());
+                destIpAddr = InetAddress.getByName(destSessions[i].getIpAddr());
                 if (destIpAddr.isMulticastAddress()) {
                     // local and remote address pairs are identical:
                     localAddr = new SessionAddress(destIpAddr,
-                            session.getPort(),
-                            session.getTtl());
+                            destSessions[i].getPort(),
+                            destSessions[i].getTtl());
                     destAddr = new SessionAddress(destIpAddr,
-                            session.getPort(),
-                            session.getTtl());
+                            destSessions[i].getPort(),
+                            destSessions[i].getTtl());
                 } else {
-                    localAddr = new SessionAddress(InetAddress.getByName(bindIpAddr), session.getPort());
-                    destAddr = new SessionAddress(destIpAddr, session.getPort());
+                    localAddr = new SessionAddress(InetAddress.getByName(bindSessions[i].getIpAddr()), bindSessions[i].getPort());
+                    destAddr = new SessionAddress(destIpAddr, destSessions[i].getPort());
                 }
                 System.err.println("Session local addr: " + localAddr);
                 System.err.println("Session remote addr: " + destAddr);
 
-                rtpMngr.initialize(localAddr);
+                SourceDescription[] srcDescList = JMFUtils.createSourceDescriptions(localAddr);
+                JMFUtils.initializeRTPManager(rtpMngr, localAddr, srcDescList);
 
                 // You can try out some other buffer size to see
                 // if you can get better smoothness.
@@ -100,9 +93,9 @@ public class RTPSwitch implements ReceiveStreamListener {
 
         try {
             synchronized (receivedStreamCount) {
-                while (receivedStreamCount.get() < sessions.length &&
+                while (receivedStreamCount.get() < destSessions.length &&
                         System.currentTimeMillis() - begin < waitingPeriod) {
-                    if (receivedStreamCount.get() < sessions.length) {
+                    if (receivedStreamCount.get() < destSessions.length) {
                         System.err.println("  - Waiting for RTP data stream to arrive...");
                     }
                     receivedStreamCount.wait(1000);
@@ -112,7 +105,7 @@ public class RTPSwitch implements ReceiveStreamListener {
             System.err.println("Failed to wait for RTP data stream : " + e.getMessage());
         }
 
-        if (receivedStreamCount.get() < sessions.length) {
+        if (receivedStreamCount.get() < destSessions.length) {
             System.err.println("No All RTP data streams was received.");
             close();
             return false;
@@ -142,7 +135,7 @@ public class RTPSwitch implements ReceiveStreamListener {
             return ;
         }
 
-        if (rtpMngrList.size() == sessions.length) {
+        if (rtpMngrList.size() == destSessions.length) {
             StatisticsData.DATA.decreaseInstance();
         }
 
