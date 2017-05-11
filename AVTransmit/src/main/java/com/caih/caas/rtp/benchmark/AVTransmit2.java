@@ -452,14 +452,10 @@ public class AVTransmit2 implements ReceiveStreamListener {
             }
         } else if (receiveStreamEvent instanceof ByeEvent) {
             System.err.println("  - Got \"bye\" from: " + participant.getCNAME());
-
-            if (playerWindow != null && playerWindow.stream == stream) {
-                setPlayerWindow(null);
-            }
-
-            RTPManager mngr = (RTPManager) receiveStreamEvent.getSource();
-            mngr.removeTargets("Closing session from AVTransmit2");
-            mngr.dispose();
+            stop();
+        } else if (receiveStreamEvent instanceof TimeoutEvent) {
+            System.err.println("  - Receive timeout from: " + participant.getCNAME());
+            stop();
         }
     }
 

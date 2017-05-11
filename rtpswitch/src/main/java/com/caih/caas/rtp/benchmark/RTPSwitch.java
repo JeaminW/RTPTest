@@ -239,6 +239,9 @@ public class RTPSwitch implements ReceiveStreamListener {
         } else if (receiveStreamEvent instanceof ByeEvent) {
             System.err.println("  - Got \"bye\" from: " + participant.getCNAME());
             close();
+        } else if (receiveStreamEvent instanceof TimeoutEvent) {
+            System.err.println("  - Receive timeout from: " + participant.getCNAME());
+            close();
         }
     }
 
