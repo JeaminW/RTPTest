@@ -3,6 +3,12 @@ package com.caih.caas.rtp.benchmark;
 import org.apache.commons.cli.*;
 
 import javax.media.MediaLocator;
+import javax.tools.JavaCompiler;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by jeaminw on 17/5/8.
@@ -20,32 +26,49 @@ public class Main {
     private static SessionLabel destSession;
     private static int numOfInstances = 1;
     private static boolean bShowGUI = false;
+    private static List<AVTransmit2> instances;
 
     public static void main(String[] args) {
         Options options = buildOptions();
         parseOptions(options, args);
 
-        // Create a audio transmit object with the specified params.
-        AVTransmit2 at = new AVTransmit2(mediaLocator, bindSession, destSession);
-        // Start the transmission
-        String result = at.start();
+        instances = new ArrayList<>(numOfInstances);
+        ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
+        for (int i = 0; i < numOfInstances; ++i) {
+            SessionLabel bindSession = Main.bindSession.labelWithPortOffset(i * 2);
+            SessionLabel destSession = Main.destSession.labelWithPortOffset(i * 2);
 
-        // result will be non-null if there was an error. The return
-        // value is a String describing the possible error. Print it.
-        if (result != null) {
-            System.err.println("Error : " + result);
-            System.exit(0);
+            // Create a audio transmit object with the specified params.
+            final AVTransmit2 trans = new AVTransmit2(mediaLocator, bindSession, destSession);
+            instances.add(trans);
+            cachedThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    // Start the transmission
+                    String result = trans.start();
+
+                    // result will be non-null if there was an error. The return
+                    // value is a String describing the possible error. Print it.
+                    if (result != null) {
+                        System.err.println("Error : " + result);
+                        System.exit(0);
+                    }
+                }
+            });
         }
 
-        System.err.println("Start transmission for 4 minutes...");
-
         try {
+            cachedThreadPool.shutdown();
+            cachedThreadPool.awaitTermination(10, TimeUnit.MINUTES);
+            cachedThreadPool = null;
+            System.err.println("Start transmission for 4 minutes...");
+            
             Thread.currentThread().sleep(240000);
         } catch (InterruptedException ie) {
         }
 
         // Stop the transmission
-        at.stop();
+
         System.err.println("...transmission ended.");
     }
 

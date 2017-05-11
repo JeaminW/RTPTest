@@ -2,6 +2,12 @@ package com.caih.caas.rtp.benchmark;
 
 import org.apache.commons.cli.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Created by jeaminw on 17/5/5.
  */
@@ -14,19 +20,38 @@ public class Main {
     private static SessionLabel[] bindSessions;
     private static SessionLabel[] destSessions;
     private static int numOfInstances = 1;
+    private static List<RTPSwitch> instances;
 
     public static void main(String argv[]) {
         Options options = buildOptions();
         parseOptions(options, argv);
 
-        RTPSwitch rtpSwitch = new RTPSwitch(bindSessions, destSessions);
-        if (!rtpSwitch.init()) {
-            System.err.println("Failed to initialize the sessions.");
-            System.exit(-1);
+        instances = new ArrayList<>(numOfInstances);
+        ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
+        for (int i = 0; i < numOfInstances; ++i) {
+            SessionLabel[] bindSessions = SessionLabel.labelsWithPortOffset(Main.bindSessions, i * 2);
+            SessionLabel[] destSessions = SessionLabel.labelsWithPortOffset(Main.destSessions, i * 2);
+
+            final RTPSwitch rtpSwitch = new RTPSwitch(bindSessions, destSessions);
+            instances.add(rtpSwitch);
+            cachedThreadPool.execute(new Runnable() {
+                @Override
+                public void run() {
+                    if (!rtpSwitch.init()) {
+                        System.err.println("Failed to initialize the sessions.");
+                        System.exit(-1);
+                    }
+                }
+            });
         }
 
         // Check to see if RTPSwitch is done.
         try {
+            cachedThreadPool.shutdown();
+            cachedThreadPool.awaitTermination(10, TimeUnit.MINUTES);
+            cachedThreadPool = null;
+            System.err.println("All RTPSwitch instances were initialized.");
+
             while (StatisticsData.DATA.getLiveInstancesCount() > 0) {
                 System.err.println("Current alive sessions : " + StatisticsData.DATA.getLiveInstancesCount());
                 Thread.sleep(1000);

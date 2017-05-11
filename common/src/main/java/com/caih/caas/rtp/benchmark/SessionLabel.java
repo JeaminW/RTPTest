@@ -10,7 +10,7 @@ public class SessionLabel {
     private int port;
     private int ttl = 1;
 
-    SessionLabel(String session) throws IllegalArgumentException {
+    public SessionLabel(String session) throws IllegalArgumentException {
         if (session == null || session.length() <= 0) {
             throw new IllegalArgumentException("Insufficient parameters.");
         }
@@ -51,6 +51,41 @@ public class SessionLabel {
                 throw new IllegalArgumentException();
             }
         }
+    }
+
+    public SessionLabel(String ipAddr, int port, int ttl) {
+        if (ipAddr == null) { throw new IllegalArgumentException("Arg[ipAddr] could't be null"); }
+        if (port <= 0) { throw new IllegalArgumentException("Arg[port] could't be less than or equal to zero"); }
+        if (ttl < 0) { throw new IllegalArgumentException("Arg[ttl] could't be less than zero"); }
+
+        this.ipAddr = ipAddr;
+        this.port = port;
+        this.ttl = ttl;
+    }
+
+    public SessionLabel(String ipAddr, int port) {
+        this(ipAddr, port, 0);
+    }
+
+    public SessionLabel labelWithPortOffset(int portOffset) {
+        return new SessionLabel(ipAddr, port+portOffset, ttl);
+    }
+
+    public static SessionLabel[] labelsWithPortOffset(SessionLabel[] labels,  int portOffset) {
+        if (labels == null) {
+            return null;
+        }
+
+        SessionLabel[] newLabels = new SessionLabel[labels.length];
+        for (int i = 0; i < labels.length; ++i) {
+            if (labels[i] == null) {
+                continue;
+            }
+
+            newLabels[i] = labels[i].labelWithPortOffset(portOffset);
+        }
+
+        return newLabels;
     }
 
     public String getIpAddr() {
