@@ -380,7 +380,7 @@ public class JMFUtils {
         if (sourceDescriptions == null) {
             manager.initialize(localAddress);
         } else {
-            double rtcp_bw_fraction = 0.05D;
+            double rtcp_bw_fraction = 0.10D;
             double rtcp_sender_bw_fraction = 0.25D;
             SessionAddress[] localAddresses = new SessionAddress[]{localAddress};
             manager.initialize(localAddresses, sourceDescriptions, rtcp_bw_fraction, rtcp_sender_bw_fraction, null);
