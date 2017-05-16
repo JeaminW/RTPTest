@@ -33,6 +33,7 @@ package com.caih.caas.rtp.benchmark;
 import java.awt.*;
 import java.io.*;
 import java.net.InetAddress;
+import java.util.Vector;
 import javax.media.*;
 import javax.media.control.BufferControl;
 import javax.media.protocol.*;
@@ -44,7 +45,7 @@ import javax.media.rtp.*;
 import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.*;
 
-public class AVTransmit2 implements ReceiveStreamListener {
+public class AVTransmit2 implements ReceiveStreamListener, RemoteListener {
 
     // Input MediaLocator
     // Can be a file or http or capture source
@@ -228,6 +229,7 @@ public class AVTransmit2 implements ReceiveStreamListener {
             try {
                 rtpMgrs[i] = RTPManager.newInstance();
                 rtpMgrs[i].addReceiveStreamListener(this);
+                rtpMgrs[i].addRemoteListener(this);
 
                 // The local session address will be created on the
                 // same port as the the target port. This is necessary
@@ -456,6 +458,23 @@ public class AVTransmit2 implements ReceiveStreamListener {
         } else if (receiveStreamEvent instanceof TimeoutEvent) {
             System.err.println("  - Receive timeout from: " + participant.getCNAME());
             stop();
+        }
+    }
+
+    @Override
+    public void update(RemoteEvent remoteEvent) {
+        if (remoteEvent instanceof SenderReportEvent) {
+            SenderReportEvent senderReportEvt = (SenderReportEvent) remoteEvent;
+            SenderReport report = senderReportEvt.getReport();
+            Vector<Feedback> feedbacks = report.getFeedbackReports();
+            Feedback feedback = (feedbacks != null && feedbacks.size() > 0) ? feedbacks.get(0) : null;
+
+            if (feedback != null) {
+                double pktLostRateSRTotal = feedback.getNumLost() / (double) report.getSenderPacketCount();
+                double pktLostRateSR = feedback.getFractionLost() / 256.0D;
+                double pktJitterSR = feedback.getJitter() / 8000.0D;
+                System.err.printf("  - SR[%s] report: PktLostRateTotal[%.4f%%] PktLostRateSR[%.4f%%] PktJitterSR[%.4fs]\n", report.getParticipant().getCNAME(), pktLostRateSRTotal, pktLostRateSR, pktJitterSR);
+            }
         }
     }
 
