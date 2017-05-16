@@ -73,8 +73,8 @@ public class RTPSwitch implements ReceiveStreamListener {
                 if (buffCtrl != null) {
                     buffCtrl.setBufferLength(350);
                     buffCtrl.setEnabledThreshold(true);
-                    buffCtrl.setMinimumThreshold(20);
-                    System.err.println("Setup Buffer Control: buffLen[350] minThreshold[20] in ms unit.");
+                    buffCtrl.setMinimumThreshold(100);
+                    System.err.println("Setup Buffer Control: buffLen[350] minThreshold[100] in ms unit.");
                 }
 
                 rtpMngr.addTarget(destAddr);
