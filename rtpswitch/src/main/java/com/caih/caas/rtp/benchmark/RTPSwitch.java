@@ -47,6 +47,7 @@ public class RTPSwitch implements ReceiveStreamListener {
                 RTPManager rtpMngr = RTPManager.newInstance();
                 rtpMngr.addSessionListener(new RTPManagerSessionListener());
                 rtpMngr.addReceiveStreamListener(this);
+                rtpMngr.addRemoteListener(new RTPManagerRemoteEventListener());
 
                 destIpAddr = InetAddress.getByName(destSessions[i].getIpAddr());
                 if (destIpAddr.isMulticastAddress()) {
