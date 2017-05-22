@@ -15,11 +15,13 @@ public class Main {
     private static final String OPT_SHORT_BIND_ADDR = "b";
     private static final String OPT_SHORT_DEST_ADDR = "d";
     private static final String OPT_SHORT_RUN = "r";
+    private static final String OPT_SHORT_TRANSCODING = "t";
     private static final String OPT_SHORT_HELP = "h";
 
     private static SessionLabel[] bindSessions;
     private static SessionLabel[] destSessions;
     private static int numOfInstances = 1;
+    private static boolean transcoding = false;
     private static List<RTPSwitch> instances;
 
     public static void main(String argv[]) {
@@ -77,6 +79,7 @@ public class Main {
                 .build());
 
         options.addOption(OPT_SHORT_RUN, true, "number of running instances");
+        options.addOption(OPT_SHORT_TRANSCODING, "turn on transcoding process");
         options.addOption(OPT_SHORT_HELP, "help", false, "print help for the command.");
 
         return options;
@@ -111,6 +114,10 @@ public class Main {
                 }
             }
 
+            if (cmd.hasOption(OPT_SHORT_TRANSCODING)) {
+                Main.transcoding = true;
+            }
+
             if (cmd.hasOption(OPT_SHORT_HELP)) {
                 printHelp(options);
             }
@@ -122,8 +129,12 @@ public class Main {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-h]", options);
+        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-t] [-h]", options);
 
         System.exit(0);
+    }
+
+    public static boolean shouldTranscoding () {
+        return transcoding;
     }
 }

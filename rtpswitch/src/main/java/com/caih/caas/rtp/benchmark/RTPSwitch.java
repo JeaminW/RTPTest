@@ -1,10 +1,15 @@
 package com.caih.caas.rtp.benchmark;
 
+import javax.media.*;
 import javax.media.control.BufferControl;
+import javax.media.control.TrackControl;
+import javax.media.format.AudioFormat;
+import javax.media.protocol.ContentDescriptor;
 import javax.media.protocol.DataSource;
 import javax.media.rtp.*;
 import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.SourceDescription;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +22,7 @@ public class RTPSwitch implements ReceiveStreamListener {
     SessionLabel[] bindSessions;
     SessionLabel[] destSessions;
     List<RTPManager> rtpMngrs;
+    List<Processor> transcodingProcList;
 
     Map<RTPManager, ReceiveStream> receivedStreamsMap = new ConcurrentHashMap<>(2);
     final AtomicInteger receivedStreamCount = new AtomicInteger(0);
@@ -40,6 +46,7 @@ public class RTPSwitch implements ReceiveStreamListener {
             SessionAddress localAddr;
             SessionAddress destAddr;
             rtpMngrs = new ArrayList<>(destSessions.length);
+            transcodingProcList = new ArrayList<>(destSessions.length);
 
             for (int i = 0; i < destSessions.length; ++i) {
                 System.err.println("  - Open RTP session for addr: " + destSessions[i].getIpAddr() + " port: " + destSessions[i].getPort() + " ttl: " + destSessions[i].getTtl());
@@ -126,10 +133,13 @@ public class RTPSwitch implements ReceiveStreamListener {
      */
     protected void close() {
         // close the RTP session.
-        List<RTPManager> rtpMngrList = null;
+        List<RTPManager> rtpMngrList;
+        List<Processor> procList;
         synchronized (this) {
             rtpMngrList = rtpMngrs;
+            procList = transcodingProcList;
             rtpMngrs = null;
+            transcodingProcList = null;
         }
 
         if (rtpMngrList == null) {
@@ -138,6 +148,10 @@ public class RTPSwitch implements ReceiveStreamListener {
 
         if (rtpMngrList.size() == destSessions.length) {
             StatisticsData.DATA.decreaseInstance();
+        }
+
+        for (Processor processor : procList) {
+            processor.close();
         }
 
         for (RTPManager mngr : rtpMngrList) {
@@ -162,6 +176,10 @@ public class RTPSwitch implements ReceiveStreamListener {
         try {
             RTPManager toMngr = findOppositeEnd(fromMngr);
             DataSource dataSource = recvStream.getDataSource();
+            if (Main.shouldTranscoding()) {
+                dataSource = createTranscodingProcessor(dataSource);
+            }
+
             SendStream sendStream = toMngr.createSendStream(dataSource, 0);
             sendStream.start();
         } catch (Exception e) {
@@ -190,6 +208,80 @@ public class RTPSwitch implements ReceiveStreamListener {
         } else {
             return rtpMngrs.get(oppositeIndex);
         }
+    }
+
+    protected DataSource createTranscodingProcessor(DataSource origDS) throws IOException, NoProcessorException {
+        if (origDS == null) {
+            throw new IllegalArgumentException("OrigDataSource for transcoding is null!");
+        }
+
+        Processor processor = Manager.createProcessor(origDS);
+        StateHelper stateHelper = new StateHelper(processor);
+        // Wait for it to configure
+        if (!stateHelper.configure()) {
+            throw  new IllegalStateException("Couldn't configure processor");
+        }
+
+        // Get the tracks from the processor
+        TrackControl[] tracks = processor.getTrackControls();
+        // Do we have at least one track?
+        if (tracks == null || tracks.length < 1) {
+            throw new IllegalStateException("Couldn't find tracks in processor");
+        }
+
+        // Set the output content descriptor to RAW_RTP
+        // This will limit the supported formats reported from
+        // Track.getSupportedFormats to only valid RTP formats.
+        ContentDescriptor cd = new ContentDescriptor(ContentDescriptor.RAW_RTP);
+        processor.setContentDescriptor(cd);
+
+        Format supported[];
+        String targetEncoding = AudioFormat.GSM_RTP;
+        boolean atLeastOneTrack = false;
+        // Program the tracks.
+        for (int i = 0; i < tracks.length; ++i) {
+            if (tracks[i].isEnabled()) {
+                supported = tracks[i].getSupportedFormats();
+
+                // We've set the output content to the RAW_RTP.
+                // So all the supported formats should work with RTP.
+                // We'll just pick the first one.
+                if (supported.length > 0) {
+                    Format chosen = null;
+                    for (Format fmt : supported) {
+                        if (fmt instanceof AudioFormat && fmt.isSameEncoding(targetEncoding)) {
+                            tracks[i].setFormat(fmt);
+                            chosen = fmt;
+                            break;
+                        }
+                    }
+
+                    if (chosen != null) {
+                        atLeastOneTrack = true;
+                        System.err.println("Track " + i + " is set to transmit as:");
+                        System.err.println("  " + chosen);
+                    } else {
+                        tracks[i].setEnabled(false);
+                    }
+                } else {
+                    tracks[i].setEnabled(false);
+                }
+            } else {
+                tracks[i].setEnabled(false);
+            }
+        }
+
+        if (!atLeastOneTrack) {
+            throw new IllegalStateException("Couldn't set any of the tracks to a valid RTP format");
+        }
+
+        if (!stateHelper.realize()) {
+            throw new IllegalStateException("Couldn't realize processor");
+        }
+
+        processor.start();
+        transcodingProcList.add(processor);
+        return processor.getDataOutput();
     }
 
     @Override
