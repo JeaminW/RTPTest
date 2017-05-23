@@ -29,10 +29,10 @@ public class RTPManagerRemoteEventListener implements RemoteListener {
             SenderReport report = senderReportEvt.getReport();
             Vector feedbacks = report.getFeedbackReports();
             Feedback feedback = (feedbacks != null && feedbacks.size() > 0) ? (Feedback) feedbacks.get(0) : null;
-            SenderReportData reportData = null;
+            SenderReportDataImpl reportData = null;
 
             if (feedback != null) {
-                reportData = new SenderReportData();
+                reportData = new SenderReportDataImpl();
                 reportData.pktLostRateTotal = (double) feedback.getNumLost() / (feedback.getNumLost() + report.getSenderPacketCount()) * 100.0D;
                 reportData.pktLostRate = feedback.getFractionLost() / 256.0D * 100.0D;
                 reportData.pktJitter = feedback.getJitter() / 8000.0D * 1000;
@@ -52,19 +52,22 @@ public class RTPManagerRemoteEventListener implements RemoteListener {
         }
     }
 
-    public class SenderReportData {
+    private class SenderReportDataImpl implements SenderReportData {
         private double pktLostRateTotal;
         private double pktLostRate;
         private double pktJitter;
 
+        @Override
         public double getPktLostRateTotal() {
             return pktLostRateTotal;
         }
 
+        @Override
         public double getPktLostRate() {
             return pktLostRate;
         }
 
+        @Override
         public double getPktJitter() {
             return pktJitter;
         }
