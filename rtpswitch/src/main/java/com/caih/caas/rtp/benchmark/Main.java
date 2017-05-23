@@ -17,6 +17,7 @@ public class Main {
     private static final String OPT_SHORT_RUN = "r";
     private static final String OPT_SHORT_TRANSCODING = "t";
     private static final String OPT_SHORT_HELP = "h";
+    private static final String OPT_SHORT_VERBOSE = "v";
 
     private static SessionLabel[] bindSessions;
     private static SessionLabel[] destSessions;
@@ -81,6 +82,7 @@ public class Main {
         options.addOption(OPT_SHORT_RUN, true, "number of running instances");
         options.addOption(OPT_SHORT_TRANSCODING, "turn on transcoding process");
         options.addOption(OPT_SHORT_HELP, "help", false, "print help for the command.");
+        options.addOption(OPT_SHORT_VERBOSE, "print report data");
 
         return options;
     }
@@ -121,6 +123,10 @@ public class Main {
             if (cmd.hasOption(OPT_SHORT_HELP)) {
                 printHelp(options);
             }
+
+            if (cmd.hasOption(OPT_SHORT_VERBOSE)) {
+                GlobalOptionHelper.setRTPReportVerbose(true);
+            }
         } catch (Exception e) {
             System.err.println("Parse command line error.");
             printHelp(options);
@@ -129,7 +135,7 @@ public class Main {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-t] [-h]", options);
+        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-t] [-h] [-v]", options);
 
         System.exit(0);
     }

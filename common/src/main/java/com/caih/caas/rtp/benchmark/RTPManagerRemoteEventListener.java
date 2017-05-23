@@ -1,8 +1,5 @@
 package com.caih.caas.rtp.benchmark;
 
-import javax.media.rtp.GlobalReceptionStats;
-import javax.media.rtp.GlobalTransmissionStats;
-import javax.media.rtp.RTPManager;
 import javax.media.rtp.RemoteListener;
 import javax.media.rtp.event.RemoteEvent;
 import javax.media.rtp.event.SenderReportEvent;
@@ -15,6 +12,16 @@ import java.util.Vector;
  * Created by jeaminw on 17/5/17.
  */
 public class RTPManagerRemoteEventListener implements RemoteListener {
+
+//    public void onReceiverReportEvent(ReceiverReportEvent evt) {
+//    }
+
+//    public void onRemoteCollisionEvent(RemoteCollisionEvent evt) {
+//    }
+
+    public void onSenderReportEvent(SenderReportEvent evt, SenderReportData reportData) {
+    }
+
     @Override
     public void update(RemoteEvent remoteEvent) {
         if (remoteEvent instanceof SenderReportEvent) {
@@ -22,20 +29,44 @@ public class RTPManagerRemoteEventListener implements RemoteListener {
             SenderReport report = senderReportEvt.getReport();
             Vector feedbacks = report.getFeedbackReports();
             Feedback feedback = (feedbacks != null && feedbacks.size() > 0) ? (Feedback) feedbacks.get(0) : null;
+            SenderReportData reportData = null;
 
             if (feedback != null) {
-                double pktLostRateSRTotal = (double) feedback.getNumLost() / (feedback.getNumLost() + report.getSenderPacketCount()) * 100.0D;
-                double pktLostRateSR = feedback.getFractionLost() / 256.0D * 100.0D;
-                double pktJitterSR = feedback.getJitter() / 8000.0D * 1000;
+                reportData = new SenderReportData();
+                reportData.pktLostRateTotal = (double) feedback.getNumLost() / (feedback.getNumLost() + report.getSenderPacketCount()) * 100.0D;
+                reportData.pktLostRate = feedback.getFractionLost() / 256.0D * 100.0D;
+                reportData.pktJitter = feedback.getJitter() / 8000.0D * 1000;
 
-                Formatter formatter = new Formatter();
-                formatter.format("  - SR[%s] report:", report.getParticipant().getCNAME());
-                formatter.format(" PktLostRateTotal[%d/%d %.3f%%]", feedback.getNumLost(), report.getSenderPacketCount(), pktLostRateSRTotal);
-                formatter.format(" PktLostRateSR[%.3f%%]", pktLostRateSR);
-                formatter.format(" PktJitterSR[%.1fms]", pktJitterSR);
+                if (GlobalOptionHelper.isRTPReportVerbose()) {
+                    Formatter formatter = new Formatter();
+                    formatter.format("  - SR[%s] report:", report.getParticipant().getCNAME());
+                    formatter.format(" PktLostRateTotal[%d/%d %.3f%%]", feedback.getNumLost(), report.getSenderPacketCount(), reportData.pktLostRateTotal);
+                    formatter.format(" PktLostRateSR[%.3f%%]", reportData.pktLostRate);
+                    formatter.format(" PktJitterSR[%.1fms]", reportData.pktJitter);
 
-                System.err.println(formatter.toString());
+                    System.err.println(formatter.toString());
+                }
             }
+
+            onSenderReportEvent((SenderReportEvent) remoteEvent, reportData);
+        }
+    }
+
+    public class SenderReportData {
+        private double pktLostRateTotal;
+        private double pktLostRate;
+        private double pktJitter;
+
+        public double getPktLostRateTotal() {
+            return pktLostRateTotal;
+        }
+
+        public double getPktLostRate() {
+            return pktLostRate;
+        }
+
+        public double getPktJitter() {
+            return pktJitter;
         }
     }
 }

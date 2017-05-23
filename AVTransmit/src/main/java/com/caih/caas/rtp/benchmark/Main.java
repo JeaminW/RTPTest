@@ -3,7 +3,6 @@ package com.caih.caas.rtp.benchmark;
 import org.apache.commons.cli.*;
 
 import javax.media.MediaLocator;
-import javax.tools.JavaCompiler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +19,7 @@ public class Main {
     private static final String OPT_SHORT_RUN = "r";
     private static final String OPT_SHORT_HELP = "h";
     private static final String OPT_SHORT_GUI = "g";
+    private static final String OPT_SHORT_VERBOSE = "v";
 
     private static MediaLocator mediaLocator;
     private static SessionLabel bindSession;
@@ -95,6 +95,7 @@ public class Main {
         options.addOption(OPT_SHORT_RUN, true, "number of running instances");
         options.addOption(OPT_SHORT_HELP, "help", false, "print help for the command.");
         options.addOption(OPT_SHORT_GUI, "gui", false, "play received audio stream with gui.");
+        options.addOption(OPT_SHORT_VERBOSE, "print report data");
 
         return options;
     }
@@ -123,6 +124,10 @@ public class Main {
             if (cmd.hasOption(OPT_SHORT_GUI)) {
                 bShowGUI = true;
             }
+
+            if (cmd.hasOption(OPT_SHORT_VERBOSE)) {
+                GlobalOptionHelper.setRTPReportVerbose(true);
+            }
         } catch (ParseException e) {
             System.err.println("Parse command line error.");
             printHelp(options);
@@ -131,7 +136,7 @@ public class Main {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> [-r runs] [-h] [-g/--gui]", options);
+        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> [-r runs] [-h] [-g/--gui] [-v]", options);
 
         System.exit(0);
     }
