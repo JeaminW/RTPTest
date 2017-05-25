@@ -176,7 +176,7 @@ public class RTPSwitch implements ReceiveStreamListener {
         try {
             RTPManager toMngr = findOppositeEnd(fromMngr);
             DataSource dataSource = recvStream.getDataSource();
-            if (Main.shouldTranscoding()) {
+            if (GlobalOptionHelper.shouldTranscoding()) {
                 dataSource = createTranscodingProcessor(dataSource);
             }
 

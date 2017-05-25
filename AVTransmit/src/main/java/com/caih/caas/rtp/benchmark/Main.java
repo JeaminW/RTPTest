@@ -25,7 +25,6 @@ public class Main {
     private static SessionLabel bindSession;
     private static SessionLabel destSession;
     private static int numOfInstances = 1;
-    private static boolean bShowGUI = false;
     private static List<AVTransmit2> instances;
 
     public static void main(String[] args) {
@@ -122,7 +121,7 @@ public class Main {
             }
 
             if (cmd.hasOption(OPT_SHORT_GUI)) {
-                bShowGUI = true;
+                GlobalOptionHelper.setShowGUI(true);
             }
 
             if (cmd.hasOption(OPT_SHORT_VERBOSE)) {
@@ -139,9 +138,5 @@ public class Main {
         formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> [-r runs] [-h] [-g/--gui] [-v]", options);
 
         System.exit(0);
-    }
-
-    public static boolean isShowGUI() {
-        return bShowGUI;
     }
 }

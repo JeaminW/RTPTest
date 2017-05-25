@@ -22,7 +22,6 @@ public class Main {
     private static SessionLabel[] bindSessions;
     private static SessionLabel[] destSessions;
     private static int numOfInstances = 1;
-    private static boolean transcoding = false;
     private static List<RTPSwitch> instances;
 
     public static void main(String argv[]) {
@@ -117,7 +116,7 @@ public class Main {
             }
 
             if (cmd.hasOption(OPT_SHORT_TRANSCODING)) {
-                Main.transcoding = true;
+                GlobalOptionHelper.setTranscoding(true);
             }
 
             if (cmd.hasOption(OPT_SHORT_HELP)) {
@@ -138,9 +137,5 @@ public class Main {
         formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> <BIND-SESSION-ADDR> -d <DEST-SESSION-ADDR> <DEST-SESSION-ADDR> [-r runs] [-t] [-h] [-v]", options);
 
         System.exit(0);
-    }
-
-    public static boolean shouldTranscoding () {
-        return transcoding;
     }
 }

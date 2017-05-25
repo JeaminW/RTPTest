@@ -6,9 +6,9 @@ package com.caih.caas.rtp.benchmark;
  */
 public class SessionLabel {
 
-    private String ipAddr;
+    private String ipAddr = "";
     private int port;
-    private int ttl = 1;
+    private int ttl = 0;
 
     public SessionLabel(String session) throws IllegalArgumentException {
         if (session == null || session.length() <= 0) {
@@ -86,6 +86,15 @@ public class SessionLabel {
         }
 
         return newLabels;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder string = new StringBuilder(ipAddr);
+        string.append("/").append(port);
+        string.append("/").append(ttl);
+
+        return string.toString();
     }
 
     public String getIpAddr() {

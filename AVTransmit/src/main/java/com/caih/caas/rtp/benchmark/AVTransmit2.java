@@ -426,7 +426,7 @@ public class AVTransmit2 implements ReceiveStreamListener {
                     System.err.println("      The stream comes from: " + participant.getCNAME());
                 }
 
-                if (Main.isShowGUI()) {
+                if (GlobalOptionHelper.isShowGUI()) {
                     // create a player by passing datasource to the Media Manager
                     Player p = createMediaPlayer(ds);
                     p.realize();
