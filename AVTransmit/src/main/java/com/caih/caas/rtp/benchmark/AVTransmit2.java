@@ -30,19 +30,21 @@
 
 package com.caih.caas.rtp.benchmark;
 
-import java.awt.*;
-import java.io.*;
-import java.net.InetAddress;
 import javax.media.*;
 import javax.media.control.BufferControl;
-import javax.media.protocol.*;
-import javax.media.protocol.DataSource;
-import javax.media.format.*;
-import javax.media.control.TrackControl;
 import javax.media.control.QualityControl;
+import javax.media.control.TrackControl;
+import javax.media.format.VideoFormat;
+import javax.media.protocol.ContentDescriptor;
+import javax.media.protocol.DataSource;
+import javax.media.protocol.PushBufferDataSource;
+import javax.media.protocol.PushBufferStream;
 import javax.media.rtp.*;
 import javax.media.rtp.event.*;
-import javax.media.rtp.rtcp.*;
+import javax.media.rtp.rtcp.SourceDescription;
+import java.awt.*;
+import java.io.IOException;
+import java.net.InetAddress;
 
 public class AVTransmit2 implements ReceiveStreamListener {
 
@@ -119,7 +121,6 @@ public class AVTransmit2 implements ReceiveStreamListener {
             return "Locator is null";
 
         DataSource ds;
-        DataSource clone;
 
         try {
             ds = javax.media.Manager.createDataSource(locator);
@@ -202,6 +203,15 @@ public class AVTransmit2 implements ReceiveStreamListener {
 
         // Get the output data source of the processor
         dataOutput = processor.getDataOutput();
+
+        processor.addControllerListener(new ControllerAdapter() {
+            @Override
+            public void endOfMedia(EndOfMediaEvent e) {
+                Processor processor = (Processor) e.getSource();
+                processor.setMediaTime(new Time(0));
+                processor.start();
+            }
+        });
 
         return null;
     }
@@ -370,7 +380,8 @@ public class AVTransmit2 implements ReceiveStreamListener {
     }
 
     private synchronized boolean waitForState(Processor p, int state) {
-        p.addControllerListener(new StateListener());
+        StateListener stateListener = new StateListener();
+        p.addControllerListener(stateListener);
         failed = false;
 
         // Call the required method on the processor
@@ -383,14 +394,16 @@ public class AVTransmit2 implements ReceiveStreamListener {
         // Wait until we get an event that confirms the
         // success of the method, or a failure event.
         // See StateListener inner class
-        while (p.getState() < state && !failed) {
-            synchronized (getStateLock()) {
-                try {
+        try {
+            while (p.getState() < state && !failed) {
+                synchronized (getStateLock()) {
                     getStateLock().wait();
-                } catch (InterruptedException ie) {
-                    return false;
                 }
             }
+        } catch (InterruptedException ie) {
+            return false;
+        } finally {
+            p.removeControllerListener(stateListener);
         }
 
         if (failed)
