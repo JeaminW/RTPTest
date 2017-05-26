@@ -37,6 +37,10 @@ public enum StatisticsData {
     }
 
     public void countReportData(String cname, SenderReportData reportData) {
+        if (reportData == null) {
+            return ;
+        }
+
         reportDataMap.put(cname, reportData);
 
         if (reportData.getPktSentTotal() > StatConfig.getPacketSentMin() && reportData.getPktLostRateTotal() > StatConfig.getPacketLossRateMin()) {
