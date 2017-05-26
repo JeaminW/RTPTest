@@ -1,6 +1,9 @@
 package com.caih.caas.rtp.benchmark;
 
-import javax.media.*;
+import javax.media.Format;
+import javax.media.Manager;
+import javax.media.NoProcessorException;
+import javax.media.Processor;
 import javax.media.control.BufferControl;
 import javax.media.control.TrackControl;
 import javax.media.format.AudioFormat;
@@ -11,7 +14,10 @@ import javax.media.rtp.event.*;
 import javax.media.rtp.rtcp.SourceDescription;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -54,7 +60,13 @@ public class RTPSwitch implements ReceiveStreamListener {
                 RTPManager rtpMngr = RTPManager.newInstance();
                 rtpMngr.addSessionListener(new RTPManagerSessionListener());
                 rtpMngr.addReceiveStreamListener(this);
-                rtpMngr.addRemoteListener(new RTPManagerRemoteEventListener());
+                rtpMngr.addRemoteListener(new RTPManagerRemoteEventListener() {
+                    @Override
+                    public void onSenderReportEvent(SenderReportEvent evt, SenderReportData reportData) {
+                        String cname = evt.getSessionManager().getLocalParticipant().getCNAME();
+                        StatisticsData.DATA.countReportData(cname, reportData);
+                    }
+                });
 
                 destIpAddr = InetAddress.getByName(destSessions[i].getIpAddr());
                 if (destIpAddr.isMulticastAddress()) {
@@ -131,7 +143,7 @@ public class RTPSwitch implements ReceiveStreamListener {
     /**
      * Close the session managers.
      */
-    protected void close() {
+    public void close() {
         // close the RTP session.
         List<RTPManager> rtpMngrList;
         List<Processor> procList;
@@ -151,13 +163,24 @@ public class RTPSwitch implements ReceiveStreamListener {
         }
 
         for (Processor processor : procList) {
+            processor.stop();
             processor.close();
+            processor.deallocate();
         }
 
         for (RTPManager mngr : rtpMngrList) {
             mngr.removeTargets("Closing session from RTPSwitch.");
             mngr.dispose();
         }
+    }
+
+    public List<String> getLocalCNAMEs() {
+        List<String> cnames = new ArrayList<>(rtpMngrs.size());
+        for (RTPManager mngr : rtpMngrs) {
+            cnames.add(mngr.getLocalParticipant().getCNAME());
+        }
+
+        return cnames;
     }
 
     protected boolean switchReceiveStreams() {

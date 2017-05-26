@@ -104,6 +104,7 @@ public class AVTransmit2 implements ReceiveStreamListener {
             if (processor != null) {
                 processor.stop();
                 processor.close();
+                processor.deallocate();
                 processor = null;
 
                 setPlayerWindow(null);

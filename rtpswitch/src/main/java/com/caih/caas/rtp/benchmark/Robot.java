@@ -14,6 +14,7 @@ import org.jgroups.util.Tuple;
 import org.jgroups.util.Util;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 
 /**
@@ -43,9 +44,7 @@ public class Robot implements MembershipListener {
         System.err.println("new view: " + new_view);
 
         synchronized (memberCountLock) {
-            if (new_view.size() >= 3) {
-                memberCountLock.notifyAll();
-            }
+            memberCountLock.notifyAll();
         }
     }
 
@@ -81,43 +80,76 @@ public class Robot implements MembershipListener {
             channel = null;
             dispatcher = null;
         }
+
+        if (instances != null) {
+            for (RTPSwitch rtpSwitch : instances) {
+                rtpSwitch.close();
+            }
+
+            instances.clear();
+            instances = null;
+        }
     }
 
     public void test() throws Exception {
         try {
-            synchronized (memberCountLock) {
-                while (channel.getView().size() < 3) {
-                    memberCountLock.wait(1000);
+            do {
+                synchronized (memberCountLock) {
+                    while (channel.getView().size() < 3) {
+                        memberCountLock.wait(1000);
+                    }
                 }
-            }
 
-            final int SESSION_COUNT = 2;
-            String localIPAddr = config.getBindSession().getIpAddr();
-            InetAddress localAddr = InetAddress.getByName(localIPAddr);
-            int port = Utils.findLocalRTPPortsFromBasePort(localAddr, this.port, SESSION_COUNT);
-            if (port <= 0) {
-                throw new IllegalStateException("No available ports.");
-            }
+                RTPSwitch rtpSwitch = setupOneSwitch();
+                List<String> localCNAMEs = rtpSwitch.getLocalCNAMEs();
+                int transferOK;
+                do {
+                    Util.sleep(1000);
 
-            this.port = port + 2 * SESSION_COUNT;
-            SessionLabel[] localSessions = new SessionLabel[] { new SessionLabel(localIPAddr, port), new SessionLabel(localIPAddr, port+2) };
+                    transferOK = 0;
+                    for (String cname : localCNAMEs) {
+                        SenderReportData reportData = StatisticsData.DATA.getReportData(cname);
+                        if (reportData != null && reportData.getPktSentTotal() > StatConfig.getPacketSentMin()) {
+                            ++transferOK;
+                        }
+                    }
+                } while (transferOK < localCNAMEs.size());
 
-            Address[] peers = pickTwoPeers();
-            SessionLabel[] destSessions = new SessionLabel[] { requestOpenSession(peers[0], localSessions[0]), requestOpenSession(peers[1], localSessions[1]) };
-
-            final RTPSwitch rtpSwitch = new RTPSwitch(localSessions, destSessions);
-            if (!rtpSwitch.init()) {
-                throw new IllegalStateException("Failed to initialize the sessions.");
-            }
-
-            instances.add(rtpSwitch);
-            peerSessionStat.add(peers[0]);
-            peerSessionStat.add(peers[1]);
-
-            Util.sleep(240000);
+                System.out.println(StatisticsData.DATA.statDataSummaryLine());
+            } while (StatisticsData.DATA.packetLossSessionCount() < StatConfig.getPacketLossSessionMax());
         } finally {
             sendExitCmd();
         }
+    }
+
+    RTPSwitch setupOneSwitch() throws Exception {
+        SessionLabel[] localSessions = generateLocalSessions();
+        Address[] peers = pickTwoPeers();
+        SessionLabel[] destSessions = new SessionLabel[] { requestOpenSession(peers[0], localSessions[0]), requestOpenSession(peers[1], localSessions[1]) };
+
+        final RTPSwitch rtpSwitch = new RTPSwitch(localSessions, destSessions);
+        if (!rtpSwitch.init()) {
+            throw new IllegalStateException("Failed to initialize the sessions.");
+        }
+
+        instances.add(rtpSwitch);
+        peerSessionStat.add(peers[0]);
+        peerSessionStat.add(peers[1]);
+
+        return rtpSwitch;
+    }
+
+    SessionLabel[] generateLocalSessions() throws UnknownHostException {
+        final int SESSION_COUNT = 2;
+        String localIPAddr = config.getBindSession().getIpAddr();
+        InetAddress localAddr = InetAddress.getByName(localIPAddr);
+        int port = Utils.findLocalRTPPortsFromBasePort(localAddr, this.port, SESSION_COUNT);
+        if (port <= 0) {
+            throw new IllegalStateException("No available ports.");
+        }
+
+        this.port = port + 2 * SESSION_COUNT;
+        return new SessionLabel[] { new SessionLabel(localIPAddr, port), new SessionLabel(localIPAddr, port+2) };
     }
 
     Address[] pickTwoPeers() {

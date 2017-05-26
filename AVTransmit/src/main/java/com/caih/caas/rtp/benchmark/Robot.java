@@ -55,6 +55,15 @@ public class Robot {
             channel = null;
             dispatcher = null;
         }
+
+        if (instances != null) {
+            for (AVTransmit2 trans : instances) {
+                trans.stop();
+            }
+
+            instances.clear();
+            instances = null;
+        }
     }
 
     public void exit() {

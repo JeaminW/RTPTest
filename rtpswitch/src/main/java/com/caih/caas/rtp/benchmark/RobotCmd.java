@@ -10,6 +10,7 @@ public class RobotCmd {
     private static final String OPT_SHORT_TRANSCODING = "t";
     private static final String OPT_SHORT_HELP = "h";
     private static final String OPT_SHORT_VERBOSE = "v";
+    private static final String OPT_SHORT_STAT_CONFIG = "c";
 
     private static final ConfigImpl config = new ConfigImpl();
 
@@ -24,6 +25,8 @@ public class RobotCmd {
             robot.start(GlobalOptionHelper.MulticastClusterName);
             robot.test();
             robot.stop();
+            System.out.println("\n\n");
+            System.out.println(StatisticsData.DATA.packetLossSessionsSummary());
         } catch (Exception ex) {
             System.err.println(ex);
         }
@@ -42,6 +45,11 @@ public class RobotCmd {
         options.addOption(OPT_SHORT_TRANSCODING, "turn on transcoding process");
         options.addOption(OPT_SHORT_HELP, "help", false, "print help for the command.");
         options.addOption(OPT_SHORT_VERBOSE, "print report data");
+
+        options.addOption(Option.builder(OPT_SHORT_STAT_CONFIG)
+                .hasArg()
+                .desc("statistics config file path")
+                .build());
 
         return options;
     }
@@ -64,6 +72,11 @@ public class RobotCmd {
             if (cmd.hasOption(OPT_SHORT_VERBOSE)) {
                 GlobalOptionHelper.setRTPReportVerbose(true);
             }
+
+            if (cmd.hasOption(OPT_SHORT_STAT_CONFIG)) {
+                String configPath = cmd.getOptionValue(OPT_SHORT_STAT_CONFIG);
+                StatConfig.load(configPath);
+            }
         } catch (Exception e) {
             System.err.println("Parse command line error." + e);
             printHelp(options);
@@ -72,7 +85,7 @@ public class RobotCmd {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> [-t] [-h] [-v]", options);
+        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> [-t] [-h] [-v] [-c]", options);
 
         System.exit(0);
     }
