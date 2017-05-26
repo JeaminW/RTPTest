@@ -69,6 +69,7 @@ public class Robot implements MembershipListener {
         channel = new JChannel(); // default props
         channel.setDiscardOwnMessages(true);
         dispatcher = new RpcDispatcher(channel, this);
+        dispatcher.setMembershipListener(this);
         channel.connect(clusterName);
     }
 
