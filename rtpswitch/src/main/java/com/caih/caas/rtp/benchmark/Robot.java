@@ -95,31 +95,37 @@ public class Robot implements MembershipListener {
     public void test() throws Exception {
         try {
             do {
-                synchronized (memberCountLock) {
-                    while (channel.getView().size() < 3) {
-                        memberCountLock.wait(1000);
-                    }
-                }
+                waitMembers();
 
                 RTPSwitch rtpSwitch = setupOneSwitch();
                 List<String> localCNAMEs = rtpSwitch.getLocalCNAMEs();
                 int transferOK;
+                int checkTimes = StatConfig.getPacketTransferStatCheckTimes();
                 do {
                     Util.sleep(1000);
 
                     transferOK = 0;
+                    --checkTimes;
                     for (String cname : localCNAMEs) {
                         SenderReportData reportData = StatisticsData.DATA.getReportData(cname);
                         if (reportData != null && reportData.getPktSentTotal() > StatConfig.getPacketSentMin()) {
                             ++transferOK;
                         }
                     }
-                } while (transferOK < localCNAMEs.size());
+                } while (transferOK < localCNAMEs.size() && checkTimes > 0);
 
                 System.out.println(StatisticsData.DATA.statDataSummaryLine());
             } while (StatisticsData.DATA.packetLossSessionCount() < StatConfig.getPacketLossSessionMax());
         } finally {
             sendExitCmd();
+        }
+    }
+
+    void waitMembers() throws InterruptedException {
+        synchronized (memberCountLock) {
+            while (channel.getView().size() < 3) {
+                memberCountLock.wait(1000);
+            }
         }
     }
 
