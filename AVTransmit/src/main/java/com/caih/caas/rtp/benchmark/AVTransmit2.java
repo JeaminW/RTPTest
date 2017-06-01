@@ -259,10 +259,10 @@ public class AVTransmit2 implements ReceiveStreamListener {
 
                 BufferControl buffCtrl = (BufferControl) rtpMgrs[i].getControl("javax.media.control.BufferControl");
                 if (buffCtrl != null) {
-                    buffCtrl.setBufferLength(350);
+                    buffCtrl.setBufferLength(GlobalOptionHelper.getBuffCtrlLength());
                     buffCtrl.setEnabledThreshold(true);
-                    buffCtrl.setMinimumThreshold(100);
-                    System.err.println("Setup Buffer Control: buffLen[350] minThreshold[100] in ms unit.");
+                    buffCtrl.setMinimumThreshold(GlobalOptionHelper.getBuffCtrlMin());
+                    System.err.printf("Setup Buffer Control: buffLen[%d] minThreshold[%d] in ms unit.%n", buffCtrl.getBufferLength(), buffCtrl.getMinimumThreshold());
                 }
 
                 rtpMgrs[i].addTarget(destAddr);

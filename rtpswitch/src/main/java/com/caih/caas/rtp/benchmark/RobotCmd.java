@@ -11,6 +11,8 @@ public class RobotCmd {
     private static final String OPT_SHORT_HELP = "h";
     private static final String OPT_SHORT_VERBOSE = "v";
     private static final String OPT_SHORT_STAT_CONFIG = "c";
+    private static final String OPT_BUFF_LENGTH = "buffer-length";
+    private static final String OPT_BUFF_MIN = "buffer-min";
 
     private static final ConfigImpl config = new ConfigImpl();
 
@@ -51,6 +53,9 @@ public class RobotCmd {
                 .desc("statistics config file path")
                 .build());
 
+        options.addOption(null, OPT_BUFF_LENGTH, true, "rtp buffer control length");
+        options.addOption(null, OPT_BUFF_MIN, true, "rtp buffer control min threshold");
+
         return options;
     }
 
@@ -77,6 +82,14 @@ public class RobotCmd {
                 String configPath = cmd.getOptionValue(OPT_SHORT_STAT_CONFIG);
                 StatConfig.load(configPath);
             }
+
+            if (cmd.hasOption(OPT_BUFF_LENGTH)) {
+                GlobalOptionHelper.setBuffCtrlLength(Long.valueOf(cmd.getOptionValue(OPT_BUFF_LENGTH)));
+            }
+
+            if (cmd.hasOption(OPT_BUFF_MIN)) {
+                GlobalOptionHelper.setBuffCtrlMin(Long.valueOf(cmd.getOptionValue(OPT_BUFF_MIN)));
+            }
         } catch (Exception e) {
             System.err.println("Parse command line error." + e);
             printHelp(options);
@@ -85,7 +98,7 @@ public class RobotCmd {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> [-t] [-h] [-v] [-c]", options);
+        formatter.printHelp( RTPSwitch.class.getSimpleName() + " -b <BIND-SESSION-ADDR> [-t] [-h] [-v] [-c] [--buffer-length 350] [--buffer-min 100]", options);
 
         System.exit(0);
     }

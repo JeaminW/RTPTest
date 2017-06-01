@@ -13,6 +13,8 @@ public class RobotCmd {
     private static final String OPT_SHORT_HELP = "h";
     private static final String OPT_SHORT_GUI = "g";
     private static final String OPT_SHORT_VERBOSE = "v";
+    private static final String OPT_BUFF_LENGTH = "buffer-length";
+    private static final String OPT_BUFF_MIN = "buffer-min";
 
     private static final ConfigImpl config = new ConfigImpl();
 
@@ -49,6 +51,9 @@ public class RobotCmd {
         options.addOption(OPT_SHORT_GUI, "gui", false, "play received audio stream with gui.");
         options.addOption(OPT_SHORT_VERBOSE, "print report data");
 
+        options.addOption(null, OPT_BUFF_LENGTH, true, "rtp buffer control length");
+        options.addOption(null, OPT_BUFF_MIN, true, "rtp buffer control min threshold");
+
         return options;
     }
 
@@ -71,6 +76,14 @@ public class RobotCmd {
             if (cmd.hasOption(OPT_SHORT_VERBOSE)) {
                 GlobalOptionHelper.setRTPReportVerbose(true);
             }
+
+            if (cmd.hasOption(OPT_BUFF_LENGTH)) {
+                GlobalOptionHelper.setBuffCtrlLength(Long.valueOf(cmd.getOptionValue(OPT_BUFF_LENGTH)));
+            }
+
+            if (cmd.hasOption(OPT_BUFF_MIN)) {
+                GlobalOptionHelper.setBuffCtrlMin(Long.valueOf(cmd.getOptionValue(OPT_BUFF_MIN)));
+            }
         } catch (ParseException e) {
             System.err.println("Parse command line error.");
             printHelp(options);
@@ -79,7 +92,7 @@ public class RobotCmd {
 
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> [-h] [-g/--gui] [-v]", options);
+        formatter.printHelp( AVTransmit2.class.getSimpleName() + " -m <MEDIA-URL> -b <BIND-SESSION-ADDR> [-h] [-g/--gui] [-v] [--buffer-length 350] [--buffer-min 100]", options);
 
         System.exit(0);
     }
