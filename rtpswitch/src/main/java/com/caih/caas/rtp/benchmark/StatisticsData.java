@@ -65,6 +65,10 @@ public enum StatisticsData {
         return pktLossDataMap.size();
     }
 
+    public int packetOpenSessionCount() {
+        return reportDataMap.size();
+    }
+
     public String packetLossSessionsSummary() {
         StringBuilder string = new StringBuilder();
         string.append(statDataSummaryLine()).append("\n");

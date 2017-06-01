@@ -115,7 +115,7 @@ public class Robot implements MembershipListener {
                 } while (transferOK < localCNAMEs.size() && checkTimes > 0);
 
                 System.out.println(StatisticsData.DATA.statDataSummaryLine());
-            } while (StatisticsData.DATA.packetLossSessionCount() < StatConfig.getPacketLossSessionMax());
+            } while (StatisticsData.DATA.packetLossSessionCount() < StatConfig.getPacketLossSessionMax() && StatisticsData.DATA.packetOpenSessionCount() < StatConfig.getPacketOpenSessionMax());
         } finally {
             sendExitCmd();
         }

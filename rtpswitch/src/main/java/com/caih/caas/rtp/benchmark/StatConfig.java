@@ -13,11 +13,13 @@ public class StatConfig {
     public static final String CFG_PktSentMin = "cfg.stat.pktSentMin";
     public static final String CFG_PktLossSessionMax = "cfg.stat.pktLossSessionMax";
     public static final String CFG_PktTransferStatCheckTimes = "cfg.stat.pktTransferStatCheckTimes";
+    public static final String CFG_PktOpenSessionMax = "cfg.stat.pktOpenSessionMax";
 
     private static double packetLossRateMin = 1;
     private static int packetSentMin = 1000;
     private static int packetLossSessionMax = 20;
     private static int packetTransferStatCheckTimes = 10;
+    private static int packetOpenSessionMax = 1000;
 
     public static void load(String path) throws IOException {
         Properties props = new Properties();
@@ -54,6 +56,13 @@ public class StatConfig {
                 }
             }
 
+            if (props.containsKey(CFG_PktOpenSessionMax)) {
+                packetOpenSessionMax = Integer.parseInt(props.getProperty(CFG_PktOpenSessionMax));
+                if (packetOpenSessionMax < 0) {
+                    throw new IllegalArgumentException(CFG_PktOpenSessionMax + " must greater than or equal to 0");
+                }
+            }
+
             System.err.println("Load stat config: ");
             System.err.println(props);
         } finally {
@@ -81,5 +90,9 @@ public class StatConfig {
 
     public static int getPacketTransferStatCheckTimes() {
         return packetTransferStatCheckTimes;
+    }
+
+    public static int getPacketOpenSessionMax() {
+        return packetOpenSessionMax;
     }
 }
