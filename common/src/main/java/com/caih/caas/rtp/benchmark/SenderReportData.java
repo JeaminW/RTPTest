@@ -6,6 +6,10 @@ package com.caih.caas.rtp.benchmark;
 public interface SenderReportData {
     long getPktSentTotal();
 
+    /**
+     * 获取总丢包率%，已换算为%单位
+     * @return 总丢包率%
+     */
     double getPktLostRateTotal();
 
     double getPktLostRate();

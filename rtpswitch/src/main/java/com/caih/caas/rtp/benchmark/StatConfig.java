@@ -30,8 +30,8 @@ public class StatConfig {
 
             if (props.containsKey(CFG_PktLossRateMin)) {
                 packetLossRateMin = Double.parseDouble(props.getProperty(CFG_PktLossRateMin));
-                if (packetLossRateMin > 1.0D || packetLossRateMin < 0.0D) {
-                    throw new IllegalArgumentException(CFG_PktLossRateMin + " must between 0.0 ~ 1.0");
+                if (packetLossRateMin > 100.0D || packetLossRateMin < 0.0D) {
+                    throw new IllegalArgumentException(CFG_PktLossRateMin + " must between 0.0 ~ 100.0");
                 }
             }
 
